@@ -46,6 +46,8 @@ var calibration: RhythmCalibration
 @export var hit_window_seconds: float = 0.1
 @export var note_chart: RhythmChart
 @export var note_keys: NoteKeys
+@export var midi_note_mapping: MidiNoteMapping
+@export var midi_file_path: String
 @export var hit_sfx: Dictionary[StringName, AudioStream]
 #endregion
 
@@ -173,7 +175,10 @@ func _prepare_composer() -> void:
 	var beat_duration := SECONDS_PER_MINUTE / bpm
 	var hit_window_beats := hit_window_seconds / beat_duration
 	composer.set_hit_window(hit_window_beats)
-	composer.set_chart(note_chart)
+	if note_chart:
+		composer.set_chart(note_chart)
+	if midi_file_path and midi_note_mapping:
+		composer.set_chart_from_midi(midi_file_path, bpm, midi_note_mapping)
 
 func _prepare_player_input() -> void:
 	if note_keys:

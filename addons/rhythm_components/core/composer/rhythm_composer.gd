@@ -128,6 +128,12 @@ func set_chart(chart: RhythmChart) -> void:
 	_chart = chart
 	_compile_chart(_chart)
 
+func set_chart_from_midi(midi_path: String, bpm: float, note_mapping: MidiNoteMapping) -> void:
+	_cur_index = 0
+	_prev_beat = 0.0
+	_chart = compile_chart_from_midi(midi_path, bpm, note_mapping)
+	_compile_chart(_chart)
+
 func _report_action(action: ComposerAction) -> void:
 	match action.type:
 		ComposerAction.ActionType.BEHAVIOR_ENTER:
@@ -289,4 +295,61 @@ func add_sequence_auto(sequence: ChartPartSequence) -> float:
 	_add_sequence_end(sequence_copy)
 
 	return sequence_copy.start_time
+#endregion
+
+#region MIDI Compilation
+func compile_chart_from_midi(
+	midi_path: String,
+	bpm: float,
+	note_mapping: MidiNoteMapping
+) -> RhythmChart:
+	var parser := MidiParser.new()
+	var parse_result := parser.parse_file(midi_path)
+	
+	if parse_result.notes.is_empty():
+		push_warning("No notes found in MIDI file: " + midi_path)
+		return null
+	
+	if not note_mapping or not note_mapping.default_note_type:
+		push_error("MidiNoteMapping must have a default_note_type set")
+		return null
+	
+	var chart := RhythmChart.new()
+	chart.parts = []
+	
+	var ticks_per_quarter_note := parse_result.ticks_per_quarter
+	var ticks_per_beat := parse_result.get_ticks_per_beat()
+	var hold_threshold_beats := 0.5
+	
+	for midi_note in parse_result.notes:
+		var note_type := note_mapping.get_note_type(midi_note.note_number)
+		if not note_type:
+			continue
+		
+		var start_beat := midi_note.start_tick / ticks_per_beat
+		var duration_ticks := midi_note.duration
+		var duration_beats := duration_ticks / ticks_per_beat
+		
+		var note := ChartPartNote.new()
+		note.type = note_type
+		note.start_time = start_beat
+		note.name = "Note_" + str(midi_note.note_number) + "_" + str(start_beat)
+		
+		if duration_beats > hold_threshold_beats:
+			note.hold = true
+			note.hold_time = duration_beats
+			
+			if note_type.release_on_beat:
+				var beats_per_measure: float = 4.0
+				if orchestrator:
+					beats_per_measure = orchestrator.beats_per_measure
+				var release_beat := start_beat + duration_beats
+				var quantized_release: float = ceil(release_beat / beats_per_measure) * beats_per_measure
+				note.hold_time = quantized_release - start_beat
+		
+		chart.parts.append(note)
+	
+	chart.parts.sort_custom(func(a, b): return a.start_time < b.start_time)
+	
+	return chart
 #endregion
