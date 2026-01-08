@@ -7,8 +7,8 @@ signal beat_update(beat: float)
 signal measure_update(measure: int)
 
 # Judge Signals
-signal note_missed(note_key: StringName)
-signal note_succeed(note_key: StringName, error_beats: float)
+signal note_missed(note: ChartPartNote)
+signal note_succeed(note: ChartPartNote, error_beats: float)
 signal blank_hit(note_key: StringName)
 
 # Composer Signals
@@ -222,7 +222,7 @@ func _on_composer_note_hit(note: ChartPartNote) -> void:
 
 	var res := judge.on_note_hit_time(note)
 	if res["emit"]:
-		_on_note_succeed(note.type.action_name, res["error_beats"])
+		_on_note_succeed(note, res["error_beats"])
 
 func _on_composer_note_signal(note_signal: ChartPartSignal) -> void:
 	note_signal.emit(note_signal)
@@ -239,11 +239,11 @@ func _on_player_input_event(
 	if not _calibrating:
 		judge.on_input_event(action_name, event, beat, !emulate)
 
-func _on_note_succeed(note_key: StringName, error_beats: float) -> void:
-	note_succeed.emit(note_key, error_beats)
+func _on_note_succeed(note: ChartPartNote, error_beats: float) -> void:
+	note_succeed.emit(note, error_beats)
 
-func _on_note_missed(note_key: StringName) -> void:
-	note_missed.emit(note_key)
+func _on_note_missed(note: ChartPartNote) -> void:
+	note_missed.emit(note)
 
 func _on_note_blank_hit(note_key: StringName) -> void:
 	blank_hit.emit(note_key)

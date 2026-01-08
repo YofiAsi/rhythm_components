@@ -1,8 +1,8 @@
 class_name RhythmJudge
 extends RhythmComponent
 
-signal note_succeed(note_key: StringName, error_beats: float)
-signal note_missed(note_key: StringName)
+signal note_succeed(note: ChartPartNote, error_beats: float)
+signal note_missed(note: ChartPartNote)
 signal note_blank_hit(note_key: StringName)
 
 class NoteState:
@@ -64,12 +64,12 @@ func on_hit_window_closed(note: ChartPartNote, close_beat: float) -> void:
 
 	# If never resolved, it's a miss.
 	if not st.resolved:
-		note_missed.emit(st.note_key)
+		note_missed.emit(st.note)
 		return
 
 	# Failsafe: if resolved but never dispatched for some reason, dispatch now.
 	if st.resolved and not st.dispatched:
-		note_succeed.emit(st.note_key, st.error_beats)
+		note_succeed.emit(st.note, st.error_beats)
 		st.dispatched = true
 
 # --- Input handling ---
@@ -100,7 +100,7 @@ func on_input_event(
 
 	# Late (or exactly on time) hit: succeed immediately.
 	if input_beat >= st.note.start_time and not st.dispatched:
-		note_succeed.emit(note_key, st.error_beats)
+		note_succeed.emit(st.note, st.error_beats)
 		st.dispatched = true
 
 func _pick_best_pending(note_key: StringName, input_beat: float) -> NoteState:
